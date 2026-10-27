@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% block title %}Reportes{% endblock %}
+{% block content %}
+<div class="page-head no-print"><h2>Reportes</h2></div>
+
+<form class="filters card no-print" method="get">
+  <select class="input" name="mode" id="mode">
+    <option value="daily" {{ 'selected' if period.mode=='daily' }}>Diario</option>
+    <option value="monthly" {{ 'selected' if period.mode=='monthly' }}>Mensual</option>
+  </select>
+  <span id="daily-fields" {{ 'style=display:none' if period.mode=='monthly' }}>
+    <input class="input" type="date" name="date" value="{{ period.date if period.mode=='daily' else '' }}">
+  </span>
+  <span id="monthly-fields" {{ 'style=display:none' if period.mode=='daily' }}>
+    <input class="input" type="number" name="month" min="1" max="12" placeholder="Mes" value="{{ period.month if period.mode=='monthly' else '' }}">
+    <input class="input" type="number" name="year" placeholder="Año" value="{{ period.year if period.mode=='monthly' else '' }}">
+  </span>
+  <button class="btn btn-primary">Generar</button>
+  <a class="btn btn-ghost" href="{{ url_for('reports.export_csv', **request.args) }}">Exportar CSV</a>
+  <button type="button" class="btn btn-ghost" onclick="window.print()">Imprimir</button>
+</form>
+
+<h3 class="report-title">{{ title }}</h3>
+
+<div class="stat-grid">
+  <div class="stat"><span>Creadas</span><strong>{{ data.counts.created }}</strong></div>
+  <div class="stat"><span>Aprobadas cliente</span><strong>{{ data.counts.approved_client }}</strong></div>
+  <div class="stat"><span>Confirmadas</span><strong>{{ data.counts.confirmed }}</strong></div>
+  <div class="stat"><span>Iniciadas</span><strong>{{ data.counts.started }}</strong></div>
+  <div class="stat"><span>Finalizadas</span><strong>{{ data.counts.finished }}</strong></div>
+  <div class="stat"><span>Entregadas</span><strong>{{ data.counts.delivered }}</strong></div>
+  <div class="stat accent-wait"><span>Rechazadas/Canceladas</span><strong>{{ data.counts.rejected_cancelled }}</strong></div>
+</div>
+
+<div class="report-cols">
+  <section class="card">
+    <h3>Tiempos promedio</h3>
+    <div class="kv tight">
+      <div><span>Efectivo de trabajo</span><strong>{{ fmt_dur(data.times.avg_effective) }} <small class="muted">(n={{ data.times.n_effective }})</small></strong></div>
+      <div><span>Total de reparación</span><strong>{{ fmt_dur(data.times.avg_repair) }} <small class="muted">(n={{ data.times.n_repair }})</small></strong></div>
+      <div><span>Espera de aprobación</span><strong>{{ fmt_dur(data.times.avg_wait_approval) }} <small class="muted">(n={{ data.times.n_wait }})</small></strong></div>
+      <div><span>Pendiente de inicio</span><strong>{{ fmt_dur(data.times.avg_pending_start) }} <small class="muted">(n={{ data.times.n_pending }})</small></strong></div>
+      <div><span>Finalización → entrega</span><strong>{{ fmt_dur(data.times.avg_finish_to_deliver) }} <small class="muted">(n={{ data.times.n_f2d }})</small></strong></div>
+    </div>
+    <h4>Tiempo efectivo por empleado</h4>
+    <div class="kv tight">
+      {% for name, secs in data.per_employee.items() %}
+      <div><span>{{ name }}</span><strong>{{ fmt_dur(secs) }}</strong></div>
+      {% else %}<p class="muted">Sin registros en el periodo.</p>{% endfor %}
+    </div>
+  </section>
+
+  <section class="card">
+    <h3>Económico</h3>
+    <div class="kv tight">
+      <div><span>Promedio aprobado</span><strong>{{ data.economics.avg_approved|money }} <small class="muted">(n={{ data.economics.n_approved }})</small></strong></div>
+      <div><span>Promedio cobrado</span><strong>{{ data.economics.avg_final|money }} <small class="muted">(n={{ data.economics.n_final }})</small></strong></div>
+      <div><span>Total aprobado</span><strong>{{ data.economics.total_approved|money }}</strong></div>
+      <div><span>Total cobrado</span><strong>{{ data.economics.total_collected|money }}</strong></div>
+      <div><span>Órdenes sin monto</span><strong>{{ data.economics.orders_without_amount }}</strong></div>
+    </div>
+    <p class="muted">Los promedios excluyen órdenes sin monto registrado. El monto aprobado y el cobrado se informan por separado.</p>
+  </section>
+</div>
+
+<div class="report-cols">
+  <section class="card"><h3>Tipos de trabajo</h3><canvas id="chartWork"></canvas>
+    {% if data.worktypes.top %}<p class="muted">Más frecuente: <strong>{{ data.worktypes.top[0] }}</strong> ({{ data.worktypes.top[1] }})</p>{% endif %}
+  </section>
+  <section class="card"><h3>Marcas</h3><canvas id="chartBrand"></canvas>
+    {% if data.brands.top %}<p class="muted">Más frecuente: <strong>{{ data.brands.top[0] }}</strong> ({{ data.brands.top[1] }})</p>{% endif %}
+  </section>
+  <section class="card"><h3>Tipos de vehículo</h3><canvas id="chartVehicle"></canvas></section>
+  <section class="card"><h3>Órdenes por día</h3><canvas id="chartDaily"></canvas></section>
+</div>
+
+<section class="card">
+  <h3>Órdenes creadas en el periodo</h3>
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>#</th><th>Vehículo</th><th>Trabajo</th><th>Estado</th><th>Aprobado</th><th>Cobrado</th></tr></thead>
+      <tbody>
+      {% for o in data.created_orders %}
+        <tr><td>#{{ o.number }}</td><td>{{ o.vehicle_label }} {{ o.brand or '' }}</td>
+        <td>{{ o.work_type_label }}</td><td>{{ o.status_label }}</td>
+        <td>{{ o.approved_amount|money }}</td><td>{{ o.final_amount|money }}</td></tr>
+      {% else %}<tr><td colspan="6" class="muted center">Sin órdenes.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<script id="report-data" type="application/json">
+{
+  "work": {{ data.worktypes.counts|tojson }},
+  "brand": {{ data.brands.counts|tojson }},
+  "vehicle": {{ data.vehicles.counts|tojson }},
+  "daily": {{ data.daily|tojson }}
+}
+</script>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/chart.umd.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/reports.js') }}"></script>
+<script>
+  document.getElementById('mode').addEventListener('change', function(){
+    var m = this.value;
+    document.getElementById('daily-fields').style.display = (m==='daily') ? '' : 'none';
+    document.getElementById('monthly-fields').style.display = (m==='monthly') ? '' : 'none';
+  });
+</script>
+{% endblock %}

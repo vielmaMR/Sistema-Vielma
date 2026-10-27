@@ -1,0 +1,117 @@
+{% macro csrf() %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endmacro %}
+<section class="card actions-card">
+  <h3>Acciones</h3>
+
+  {# ---- Enviar a aprobación (Solicitado) ---- #}
+  {% if order.status == C.ST_SOLICITADO %}
+    <form method="post" action="{{ url_for('orders.send_for_approval', order_id=order.id) }}" class="action-form">
+      {{ csrf() }}
+      <label>Presupuesto estimado
+        <span class="money-field"><span class="money-prefix">Gs</span>{{ approval_form.estimated_budget(class="input money-input") }}</span>
+      </label>
+      <label>Observación{{ approval_form.note(class="input", rows=2) }}</label>
+      <button class="btn btn-primary btn-block">Enviar a aprobación</button>
+    </form>
+  {% endif %}
+
+  {# ---- Registrar decisión del cliente (En espera / Aprobado para re-decidir) ---- #}
+  {% if order.status in [C.ST_ESPERA_APROBACION, C.ST_RECHAZADO_CLIENTE] %}
+    <form method="post" action="{{ url_for('orders.client_decision', order_id=order.id) }}" class="action-form">
+      {{ csrf() }}
+      <label>Decisión del cliente{{ client_form.decision(class="input") }}</label>
+      <label>Observación{{ client_form.note(class="input", rows=2) }}</label>
+      <button class="btn btn-primary btn-block">Registrar decisión</button>
+    </form>
+  {% endif %}
+
+  {# ---- Confirmar (solo jefe, con aprobación de cliente) ---- #}
+  {% if current_user.is_jefe and order.status in [C.ST_APROBADO_CLIENTE, C.ST_SOLICITADO] %}
+    {% if order.has_client_approval %}
+    <form method="post" action="{{ url_for('orders.confirm', order_id=order.id) }}" class="action-form">
+      {{ csrf() }}
+      <label>Monto aprobado a cobrar
+        <span class="money-field"><span class="money-prefix">Gs</span>{{ confirm_form.approved_amount(class="input money-input") }}</span>
+      </label>
+      <label>Asignar a{{ confirm_form.assigned_to_id(class="input") }}</label>
+      <label>Observación{{ confirm_form.note(class="input", rows=2) }}</label>
+      <button class="btn btn-primary btn-block">Confirmar orden</button>
+    </form>
+    {% else %}
+    <p class="muted">Para confirmar, primero registra la aprobación del cliente.</p>
+    {% endif %}
+  {% endif %}
+
+  {# ---- Iniciar trabajo (Confirmado o Pausado) ---- #}
+  {% if order.status in [C.ST_CONFIRMADO, C.ST_PAUSADO] %}
+    {% if current_user.is_jefe or order.assigned_to_id == current_user.id %}
+    <form method="post" action="{{ url_for('orders.start', order_id=order.id) }}">
+      {{ csrf() }}
+      <button class="btn btn-success btn-block btn-lg">▶ {{ 'Reanudar' if order.status == C.ST_PAUSADO else 'Iniciar' }} trabajo</button>
+    </form>
+    {% endif %}
+  {% endif %}
+
+  {# ---- Pausar / Finalizar (En trabajo) ---- #}
+  {% if order.status == C.ST_EN_TRABAJO %}
+    {% if current_user.is_jefe or order.assigned_to_id == current_user.id %}
+    <form method="post" action="{{ url_for('orders.pause', order_id=order.id) }}" class="action-form">
+      {{ csrf() }}
+      <label>Motivo de pausa{{ pause_form.reason(class="input") }}</label>
+      <label>Especificar (si es "Otro"){{ pause_form.reason_other(class="input") }}</label>
+      <button class="btn btn-warning btn-block">⏸ Pausar</button>
+    </form>
+    {% endif %}
+  {% endif %}
+
+  {% if order.status in [C.ST_EN_TRABAJO, C.ST_PAUSADO] %}
+    {% if current_user.is_jefe or order.assigned_to_id == current_user.id %}
+    <details class="action-collapse">
+      <summary class="btn btn-dark btn-block">✔ Finalizar trabajo</summary>
+      <form method="post" action="{{ url_for('orders.finish', order_id=order.id) }}" class="action-form">
+        {{ csrf() }}
+        <label>Resumen del trabajo{{ finish_form.summary(class="input", rows=2) }}</label>
+        <label>Diagnóstico definitivo{{ finish_form.diagnosis(class="input", rows=2) }}</label>
+        <label>Repuestos{{ finish_form.parts_used(class="input", rows=2) }}</label>
+        <label>Observaciones finales{{ finish_form.observations(class="input", rows=2) }}</label>
+        <button class="btn btn-dark btn-block">Confirmar finalización</button>
+      </form>
+    </details>
+    {% endif %}
+  {% endif %}
+
+  {# ---- Jefe: cobro, entregar ---- #}
+  {% if current_user.is_jefe and order.status in [C.ST_FINALIZADO, C.ST_ENTREGADO] %}
+    <form method="post" action="{{ url_for('orders.set_final_amount', order_id=order.id) }}" class="action-form">
+      {{ csrf() }}
+      <label>Monto final cobrado
+        <span class="money-field"><span class="money-prefix">Gs</span>{{ final_form.final_amount(class="input money-input") }}</span>
+      </label>
+      <button class="btn btn-block">Registrar cobro</button>
+    </form>
+  {% endif %}
+
+  {% if current_user.is_jefe and order.status == C.ST_FINALIZADO %}
+    <form method="post" action="{{ url_for('orders.deliver', order_id=order.id) }}">
+      {{ csrf() }}
+      <button class="btn btn-success btn-block">📦 Marcar como entregada</button>
+    </form>
+  {% endif %}
+
+  {# ---- Jefe: cancelar / reabrir ---- #}
+  {% if current_user.is_jefe %}
+    {% if order.status not in C.CLOSED_STATES %}
+    <form method="post" action="{{ url_for('orders.cancel', order_id=order.id) }}" onsubmit="return confirm('¿Cancelar esta orden?');">
+      {{ csrf() }}
+      <input class="input" name="note" placeholder="Motivo (opcional)">
+      <button class="btn btn-danger btn-block">✖ Cancelar orden</button>
+    </form>
+    {% endif %}
+    {% if order.status in [C.ST_FINALIZADO, C.ST_ENTREGADO] %}
+    <form method="post" action="{{ url_for('orders.reopen', order_id=order.id) }}" onsubmit="return confirm('Reabrir esta orden (quedará auditado)?');">
+      {{ csrf() }}
+      <input class="input" name="note" placeholder="Motivo de reapertura">
+      <button class="btn btn-ghost btn-block">↺ Reabrir (auditado)</button>
+    </form>
+    {% endif %}
+  {% endif %}
+</section>

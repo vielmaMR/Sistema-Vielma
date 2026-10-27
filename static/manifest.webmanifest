@@ -1,0 +1,12 @@
+{
+  "name": "Vielma - MotoRepuestos",
+  "short_name": "Vielma",
+  "description": "Gestión de órdenes de trabajo del taller",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f1115",
+  "theme_color": "#0f1115",
+  "icons": [
+    { "src": "/static/img/logo.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Ingresar — {{ shop_name }}{% endblock %}
+{% block content %}
+<div class="login-wrap">
+  <div class="login-card">
+    <img src="{{ url_for('static', filename='img/logo.svg') }}" alt="logo" class="login-logo">
+    <h1>Vielma <span>MotoRepuestos</span></h1>
+    <p class="muted">Sistema de órdenes de trabajo</p>
+    <form method="post" novalidate>
+      {{ form.csrf_token }}
+      <label>{{ form.username.label }}
+        {{ form.username(class="input", autocomplete="username", autofocus=true) }}
+      </label>
+      {% for e in form.username.errors %}<small class="err">{{ e }}</small>{% endfor %}
+      <label>{{ form.password.label }}
+        {{ form.password(class="input", autocomplete="current-password") }}
+      </label>
+      {% for e in form.password.errors %}<small class="err">{{ e }}</small>{% endfor %}
+      <label class="checkbox">{{ form.remember() }} Mantener sesión iniciada</label>
+      {{ form.submit(class="btn btn-primary btn-block") }}
+    </form>
+  </div>
+</div>
+{% endblock %}

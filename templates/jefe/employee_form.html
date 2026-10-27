@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Editar' if user else 'Nuevo' }} empleado{% endblock %}
+{% block content %}
+<div class="card narrow">
+  <h2>{{ 'Editar empleado' if user else 'Nuevo empleado' }}</h2>
+  <form method="post" novalidate>
+    {{ form.csrf_token }}
+    <label>{{ form.full_name.label }}{{ form.full_name(class="input") }}</label>
+    {% for e in form.full_name.errors %}<small class="err">{{ e }}</small>{% endfor %}
+    <label>{{ form.username.label }}{{ form.username(class="input") }}</label>
+    {% for e in form.username.errors %}<small class="err">{{ e }}</small>{% endfor %}
+    <label>{{ form.phone.label }}{{ form.phone(class="input") }}</label>
+    <label>{{ form.role.label }}{{ form.role(class="input") }}</label>
+    {% if form.password is defined %}
+      <label>{{ form.password.label }}{{ form.password(class="input") }}</label>
+      {% for e in form.password.errors %}<small class="err">{{ e }}</small>{% endfor %}
+      <small class="muted">El empleado deberá cambiarla al iniciar sesión.</small>
+    {% endif %}
+    <label class="checkbox">{{ form.is_active() }} Usuario activo</label>
+    <div class="form-actions">
+      {{ form.submit(class="btn btn-primary") }}
+      <a class="btn btn-ghost" href="{{ url_for('jefe.employees') }}">Cancelar</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

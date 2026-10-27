@@ -1,0 +1,21 @@
+<a class="order-card" href="{{ url_for('orders.detail', order_id=o.id) }}">
+  <div class="oc-head">
+    <span class="oc-number">#{{ o.number }}</span>
+    <span class="badge {{ o.status_css }}">{{ o.status_label }}</span>
+  </div>
+  <div class="oc-vehicle">
+    <strong>{{ o.vehicle_label }}</strong>
+    {{ o.brand or '' }} {{ o.model or '' }}
+    {% if o.plate %}<span class="oc-plate">{{ o.plate }}</span>{% endif %}
+  </div>
+  <div class="oc-meta">
+    <span>🔧 {{ o.work_type_label }}</span>
+    {% if o.assigned_to %}<span>👤 {{ o.assigned_to.full_name }}</span>{% endif %}
+  </div>
+  <div class="oc-foot">
+    <span class="muted">{{ o.created_at|localdt }}</span>
+    {% if o.status == C.ST_EN_TRABAJO %}
+      <span class="oc-timer live" data-live-since="{{ o.status_since.isoformat() }}">▶ en curso</span>
+    {% endif %}
+  </div>
+</a>

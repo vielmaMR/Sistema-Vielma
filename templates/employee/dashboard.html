@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Mi panel{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h2>Hola, {{ current_user.full_name }}</h2>
+  <div class="today-chip">Hoy trabajado: <strong>{{ effective_today|dur }}</strong></div>
+</div>
+
+{% if active_order %}
+<div class="active-banner">
+  <div>
+    <span class="muted">Trabajando ahora en</span>
+    <strong>#{{ active_order.number }} · {{ active_order.vehicle_label }} {{ active_order.brand or '' }}</strong>
+  </div>
+  <a class="btn btn-primary" href="{{ url_for('orders.detail', order_id=active_order.id) }}">Abrir</a>
+</div>
+{% endif %}
+
+{% macro section(title, items) %}
+  {% if items %}
+  <section class="dash-section">
+    <h3>{{ title }} <span class="count">{{ items|length }}</span></h3>
+    <div class="card-grid">
+      {% for o in items %}{% include "partials/order_card.html" %}{% endfor %}
+    </div>
+  </section>
+  {% endif %}
+{% endmacro %}
+
+{{ section("Pendientes de inicio", buckets.pendiente_inicio) }}
+{{ section("En curso", buckets.en_curso) }}
+{{ section("Pausados", buckets.pausado) }}
+{{ section("En proceso de aprobación", buckets.espera) }}
+{{ section("Finalizados / Entregados", buckets.finalizado) }}
+{{ section("Otros", buckets.otros) }}
+
+{% set total = buckets.pendiente_inicio|length + buckets.en_curso|length + buckets.pausado|length + buckets.espera|length + buckets.finalizado|length + buckets.otros|length %}
+{% if total == 0 %}
+  <div class="empty">
+    <p>No tienes órdenes todavía.</p>
+    <a class="btn btn-primary" href="{{ url_for('orders.create') }}">Crear primera orden</a>
+  </div>
+{% endif %}
+{% endblock %}

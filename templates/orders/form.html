@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Editar' if order else 'Nueva' }} orden{% endblock %}
+{% block content %}
+<div class="card wide">
+  <h2>{{ 'Editar orden #' ~ order.number if order else 'Nueva orden de trabajo' }}</h2>
+  <form method="post" novalidate id="order-form">
+    {{ form.csrf_token }}
+
+    <fieldset class="form-step">
+      <legend>1. Vehículo</legend>
+      <div class="grid-2">
+        <label>{{ form.vehicle_type.label }}{{ form.vehicle_type(class="input") }}</label>
+        <label>{{ form.plate.label }}{{ form.plate(class="input", placeholder="ABC 123") }}</label>
+        <label>{{ form.brand.label }}{{ form.brand(class="input") }}</label>
+        <label>{{ form.model.label }}{{ form.model(class="input") }}</label>
+        <label>{{ form.year.label }}{{ form.year(class="input") }}</label>
+        <label>{{ form.mileage.label }}{{ form.mileage(class="input") }}</label>
+      </div>
+    </fieldset>
+
+    <fieldset class="form-step">
+      <legend>2. Cliente</legend>
+      <div class="grid-2">
+        <label>{{ form.client_name.label }}{{ form.client_name(class="input") }}</label>
+        <label>{{ form.client_phone.label }}{{ form.client_phone(class="input") }}</label>
+      </div>
+    </fieldset>
+
+    <fieldset class="form-step">
+      <legend>3. Trabajo</legend>
+      <label>{{ form.work_type.label }}{{ form.work_type(class="input", id="work_type") }}</label>
+      <label id="work_type_other_wrap" style="display:none">
+        {{ form.work_type_other.label }}{{ form.work_type_other(class="input", id="work_type_other") }}
+        {% for e in form.work_type_other.errors %}<small class="err">{{ e }}</small>{% endfor %}
+      </label>
+      <label>{{ form.problem_description.label }}{{ form.problem_description(class="input", rows=3) }}</label>
+      <label>{{ form.diagnosis.label }}{{ form.diagnosis(class="input", rows=3) }}</label>
+      <label>{{ form.tasks_detail.label }}{{ form.tasks_detail(class="input", rows=3) }}</label>
+      <label>{{ form.parts_used.label }}{{ form.parts_used(class="input", rows=2) }}</label>
+      <label>{{ form.observations.label }}{{ form.observations(class="input", rows=2) }}</label>
+      <label>{{ form.estimated_delivery.label }}{{ form.estimated_delivery(class="input") }}</label>
+    </fieldset>
+
+    <fieldset class="form-step">
+      <legend>4. Presupuesto{% if is_jefe %} y asignación{% endif %}</legend>
+      <div class="grid-2">
+        <label>{{ form.estimated_budget.label }}
+          <span class="money-field"><span class="money-prefix">Gs</span>{{ form.estimated_budget(class="input money-input") }}</span>
+        </label>
+        {% if is_jefe and form.assigned_to_id %}
+        <label>{{ form.assigned_to_id.label }}{{ form.assigned_to_id(class="input") }}</label>
+        {% endif %}
+      </div>
+    </fieldset>
+
+    <div class="form-actions">
+      {{ form.submit(class="btn btn-primary") }}
+      <a class="btn btn-ghost" href="{{ url_for('orders.detail', order_id=order.id) if order else url_for('main.index') }}">Cancelar</a>
+    </div>
+  </form>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+  (function(){
+    var sel = document.getElementById('work_type');
+    var wrap = document.getElementById('work_type_other_wrap');
+    function toggle(){ wrap.style.display = (sel.value === 'otro') ? 'block' : 'none'; }
+    if (sel){ sel.addEventListener('change', toggle); toggle(); }
+  })();
+</script>
+{% endblock %}

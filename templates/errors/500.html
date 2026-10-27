@@ -1,0 +1,6 @@
+{% extends "base.html" %}
+{% block title %}Error{% endblock %}
+{% block content %}
+<div class="empty"><h2>500 — Error del servidor</h2><p>Ocurrió un problema. Intenta nuevamente.</p>
+<a class="btn btn-primary" href="{{ url_for('main.index') }}">Volver al inicio</a></div>
+{% endblock %}

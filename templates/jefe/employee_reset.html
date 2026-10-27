@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Restablecer contraseña{% endblock %}
+{% block content %}
+<div class="card narrow">
+  <h2>Restablecer contraseña</h2>
+  <p class="muted">Usuario: <strong>{{ user.full_name }}</strong> ({{ user.username }})</p>
+  <form method="post" novalidate>
+    {{ form.csrf_token }}
+    <label>{{ form.new_password.label }}{{ form.new_password(class="input") }}</label>
+    {% for e in form.new_password.errors %}<small class="err">{{ e }}</small>{% endfor %}
+    <small class="muted">El empleado deberá cambiarla al iniciar sesión.</small>
+    <div class="form-actions">
+      {{ form.submit(class="btn btn-primary") }}
+      <a class="btn btn-ghost" href="{{ url_for('jefe.employees') }}">Cancelar</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Panel del jefe{% endblock %}
+{% block content %}
+<div class="page-head"><h2>Panel del taller</h2></div>
+
+<div class="stat-grid">
+  <div class="stat"><span>Órdenes creadas hoy</span><strong>{{ cards.created_today }}</strong></div>
+  <div class="stat accent-wait"><span>Pendientes de aprobación</span><strong>{{ cards.pending_approval }}</strong></div>
+  <div class="stat accent-confirm"><span>Confirmadas sin iniciar</span><strong>{{ cards.pending_start }}</strong></div>
+  <div class="stat accent-work"><span>Trabajos en curso</span><strong>{{ cards.in_progress }}</strong></div>
+  <div class="stat"><span>Finalizados hoy</span><strong>{{ cards.finished_today }}</strong></div>
+  <div class="stat"><span>Entregados hoy</span><strong>{{ cards.delivered_today }}</strong></div>
+  <div class="stat"><span>Tiempo efectivo hoy</span><strong>{{ cards.effective_today|dur }}</strong></div>
+  <div class="stat accent-money"><span>Aprobado hoy</span><strong>{{ cards.approved_today|money }}</strong></div>
+  <div class="stat accent-money"><span>Cobrado hoy</span><strong>{{ cards.collected_today|money }}</strong></div>
+</div>
+
+{% if my_jobs %}
+<section class="card">
+  <h3>Mis trabajos <span class="count">{{ my_jobs|length }}</span></h3>
+  <div class="card-grid">
+    {% for o in my_jobs %}{% include "partials/order_card.html" %}{% endfor %}
+  </div>
+</section>
+{% endif %}
+
+<section class="card">
+  <h3>Requieren tu atención</h3>
+  {% if attention %}
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>#</th><th>Vehículo</th><th>Estado</th><th>Esperando desde</th><th></th></tr></thead>
+      <tbody>
+      {% for o in attention %}
+        {% set waiting = (now - o.status_since).total_seconds() %}
+        <tr class="{{ 'row-alert' if waiting > 86400 else '' }}">
+          <td>#{{ o.number }}</td>
+          <td>{{ o.vehicle_label }} {{ o.brand or '' }} {{ o.model or '' }}<br><small class="muted">{{ o.plate or '' }}</small></td>
+          <td><span class="badge {{ o.status_css }}">{{ o.status_label }}</span></td>
+          <td>{{ waiting|dur }}</td>
+          <td><a class="btn btn-sm" href="{{ url_for('orders.detail', order_id=o.id) }}">Abrir</a></td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}<p class="muted">Nada pendiente. 👍</p>{% endif %}
+</section>
+{% endblock %}

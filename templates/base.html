@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0f1115">
+  <title>{% block title %}{{ shop_name }}{% endblock %}</title>
+  <link rel="icon" href="{{ url_for('static', filename='img/logo.svg') }}">
+  <link rel="manifest" href="{{ url_for('static', filename='manifest.webmanifest') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+  {% block head_extra %}{% endblock %}
+</head>
+<body>
+  {% if current_user %}
+  <header class="topbar">
+    <button type="button" class="menu-toggle" id="menuToggle" aria-label="Abrir menú" aria-controls="sideDrawer" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+    <a class="brand" href="{{ url_for('main.index') }}">
+      <img src="{{ url_for('static', filename='img/logo.svg') }}" alt="logo" class="brand-logo">
+      <span class="brand-text">Vielma <small>MotoRepuestos</small></span>
+    </a>
+    <nav class="topnav">
+      {% if current_user.is_jefe %}
+        <a href="{{ url_for('jefe.dashboard') }}">Panel</a>
+        <a href="{{ url_for('jefe.orders') }}">Órdenes</a>
+        <a href="{{ url_for('jefe.employees') }}">Empleados</a>
+        <a href="{{ url_for('reports.index') }}">Reportes</a>
+      {% else %}
+        <a href="{{ url_for('main.employee_dashboard') }}">Mi panel</a>
+      {% endif %}
+      <a href="{{ url_for('budget.index') }}">Presupuestos</a>
+      <a href="{{ url_for('orders.create') }}" class="nav-cta">+ Nueva orden</a>
+    </nav>
+    <div class="user-menu">
+      <span class="user-name">{{ current_user.full_name }}</span>
+      <a href="{{ url_for('auth.change_password') }}" class="link-muted">Contraseña</a>
+      <form action="{{ url_for('auth.logout') }}" method="post" class="inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn-link">Salir</button>
+      </form>
+    </div>
+  </header>
+
+  <!-- Overlay y menú lateral desplegable (móvil) -->
+  <div class="drawer-overlay" id="drawerOverlay" hidden></div>
+  <aside class="side-drawer" id="sideDrawer" aria-hidden="true">
+    <div class="drawer-head">
+      <img src="{{ url_for('static', filename='img/logo.svg') }}" alt="logo" class="brand-logo">
+      <div>
+        <strong>Vielma</strong>
+        <small>MotoRepuestos</small>
+      </div>
+      <button type="button" class="drawer-close" id="drawerClose" aria-label="Cerrar menú">&times;</button>
+    </div>
+    <div class="drawer-user">
+      <span class="muted">Conectado como</span>
+      <strong>{{ current_user.full_name }}</strong>
+      <span class="role-chip">{{ 'Jefe' if current_user.is_jefe else 'Empleado' }}</span>
+    </div>
+    <nav class="drawer-nav">
+      {% if current_user.is_jefe %}
+        <a href="{{ url_for('jefe.dashboard') }}"><span class="dn-icon">📊</span> Panel</a>
+        <a href="{{ url_for('jefe.orders') }}"><span class="dn-icon">📋</span> Órdenes</a>
+        <a href="{{ url_for('jefe.employees') }}"><span class="dn-icon">👥</span> Empleados</a>
+        <a href="{{ url_for('reports.index') }}"><span class="dn-icon">📈</span> Reportes</a>
+      {% else %}
+        <a href="{{ url_for('main.employee_dashboard') }}"><span class="dn-icon">🏠</span> Mi panel</a>
+      {% endif %}
+      <a href="{{ url_for('budget.index') }}"><span class="dn-icon">🧾</span> Presupuestos</a>
+      <a href="{{ url_for('orders.create') }}" class="drawer-cta"><span class="dn-icon">➕</span> Nueva orden</a>
+      <hr class="drawer-sep">
+      <a href="{{ url_for('auth.change_password') }}"><span class="dn-icon">🔒</span> Cambiar contraseña</a>
+    </nav>
+    <form action="{{ url_for('auth.logout') }}" method="post" class="drawer-logout">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="btn btn-ghost btn-block"><span class="dn-icon">🚪</span> Cerrar sesión</button>
+    </form>
+  </aside>
+  {% endif %}
+
+  <main class="container">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="flash-area">
+          {% for category, msg in messages %}
+            <div class="flash flash-{{ category }}">{{ msg }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+  </main>
+
+  {% if current_user and not current_user.is_jefe %}
+  <nav class="bottom-nav">
+    <a href="{{ url_for('main.employee_dashboard') }}">
+      <span class="bn-icon">🏠</span><span>Panel</span>
+    </a>
+    <a href="{{ url_for('orders.create') }}" class="bn-primary">
+      <span class="bn-icon">➕</span><span>Nueva</span>
+    </a>
+    <a href="{{ url_for('auth.change_password') }}">
+      <span class="bn-icon">🔒</span><span>Clave</span>
+    </a>
+  </nav>
+  {% endif %}
+
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

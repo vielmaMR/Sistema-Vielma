@@ -1,0 +1,40 @@
+# Entorno
+.env
+venv/
+.venv/
+env/
+
+# Base de datos e instancia local
+instance/
+*.db
+*.sqlite
+*.sqlite3
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Logs temporales
+*.log
+
+# Archivos generados en runtime
+contador.txt
+*.crt
+*.key
+
+# Archivos temporales de verificación
+verify_*.py
+verify_*.out
+*.out
+git_status.txt
+
+# Editores / SO
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db

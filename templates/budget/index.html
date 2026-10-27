@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+{% block title %}Generar presupuesto{% endblock %}
+{% macro csrf() %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endmacro %}
+{% block content %}
+<div class="page-head"><h2>Generar presupuesto</h2></div>
+
+<form method="post" id="form-presupuesto">
+  {{ csrf() }}
+
+  <!-- Datos del vehículo -->
+  <section class="card">
+    <h3>⚙️ Datos del vehículo</h3>
+    <div class="grid-2">
+      <label>Tipo de vehículo <span class="req">*</span>
+        <select name="tipo_vehiculo" class="input">
+          <option value="">— Seleccionar —</option>
+          {% for opt in vehicle_options %}
+          <option value="{{ opt }}" {{ 'selected' if vehicle.tipo_vehiculo == opt }}>{{ opt }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>Marca <span class="req">*</span>
+        <input type="text" name="marca" class="input" value="{{ vehicle.marca or '' }}" placeholder="Ej: Honda, Toyota">
+      </label>
+      <label>Modelo <span class="req">*</span>
+        <input type="text" name="modelo" class="input" value="{{ vehicle.modelo or '' }}" placeholder="Ej: CB190R, Corolla">
+      </label>
+      <label>Color
+        <input type="text" name="color" class="input" value="{{ vehicle.color or '' }}" placeholder="Ej: Rojo, Negro">
+      </label>
+      <label>Año
+        <input type="text" name="anio" class="input" value="{{ vehicle.anio or '' }}" placeholder="Ej: 2022" inputmode="numeric">
+      </label>
+    </div>
+  </section>
+
+  <!-- Agregar repuesto -->
+  <section class="card">
+    <h3>🔧 Agregar repuesto</h3>
+    <div class="grid-2">
+      <label>Descripción <span class="req">*</span>
+        <input type="text" name="nuevo_desc" class="input" placeholder="Ej: Batería, Filtro de aceite">
+      </label>
+      <label>Valor unitario <span class="req">*</span>
+        <span class="money-field"><span class="money-prefix">Gs</span>
+          <input type="text" name="nuevo_valor" class="input money-input" inputmode="numeric" placeholder="450.000">
+        </span>
+      </label>
+      <label>Cantidad <span class="req">*</span>
+        <input type="number" name="nuevo_cant" class="input" min="1" value="1">
+      </label>
+    </div>
+    <button type="submit" formaction="{{ url_for('budget.add_item') }}" class="btn btn-primary">+ Agregar repuesto</button>
+  </section>
+
+  <!-- Repuestos cargados -->
+  <section class="card">
+    <h3>📋 Repuestos cargados <span class="count">{{ items|length }}</span></h3>
+    {% if items %}
+    <div class="budget-list">
+      {% for it in items %}
+      <div class="budget-row">
+        <div class="br-info">
+          <span class="br-qty">{{ it.cantidad }}x</span>
+          <span class="br-desc">{{ it.descripcion }}</span>
+        </div>
+        <div class="br-values">
+          <span class="muted">{{ it.valor_fmt }} c/u</span>
+          <strong>{{ it.subtotal_fmt }}</strong>
+        </div>
+        <button type="submit" name="eliminar" value="{{ loop.index0 }}"
+                formaction="{{ url_for('budget.remove_item') }}"
+                class="btn-eliminar" title="Eliminar">&times;</button>
+        <input type="hidden" name="repuesto_desc_{{ loop.index0 }}" value="{{ it.descripcion }}">
+        <input type="hidden" name="repuesto_valor_{{ loop.index0 }}" value="{{ it.valor_unitario }}">
+        <input type="hidden" name="repuesto_cant_{{ loop.index0 }}" value="{{ it.cantidad }}">
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="muted">No hay repuestos agregados. Completá los datos arriba y presioná "+ Agregar repuesto".</p>
+    {% endif %}
+  </section>
+
+  <!-- Total -->
+  <section class="card budget-total">
+    <span class="bt-label">TOTAL</span>
+    <span class="bt-value">{{ total_fmt }}</span>
+  </section>
+
+  <!-- Acciones -->
+  <section class="budget-actions">
+    <button type="submit" formaction="{{ url_for('budget.generate_pdf') }}" class="btn btn-primary btn-lg">⬇ Descargar PDF</button>
+    <button type="button" id="btn-whatsapp" class="btn btn-success btn-lg">📱 Compartir por WhatsApp</button>
+    <button type="submit" formaction="{{ url_for('budget.clear') }}" class="btn btn-ghost">Limpiar formulario</button>
+  </section>
+</form>
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+  var form = document.getElementById('form-presupuesto');
+  var btnWa = document.getElementById('btn-whatsapp');
+  if (!btnWa) return;
+  var URL_PDF = "{{ url_for('budget.generate_pdf') }}";
+
+  function limpiarMiles(root) {
+    root.querySelectorAll('input.money-input').forEach(function (m) {
+      m.value = (m.value || '').replace(/\D/g, '');
+    });
+  }
+
+  btnWa.addEventListener('click', async function () {
+    btnWa.disabled = true;
+    var original = btnWa.textContent;
+    btnWa.textContent = 'Preparando...';
+    try {
+      limpiarMiles(form);
+      var datos = new FormData(form);
+      var resp = await fetch(URL_PDF, { method: 'POST', body: datos });
+      if (!resp.ok) throw new Error('No se pudo generar el PDF. Revisá los datos.');
+      var blob = await resp.blob();
+      var nombre = 'presupuesto.pdf';
+      var cd = resp.headers.get('Content-Disposition') || '';
+      var m = cd.match(/filename=([^;]+)/);
+      if (m) nombre = m[1].trim();
+      var archivo = new File([blob], nombre, { type: 'application/pdf' });
+
+      if (navigator.canShare && navigator.canShare({ files: [archivo] })) {
+        try {
+          await navigator.share({ files: [archivo], title: nombre,
+            text: 'Te comparto el presupuesto de Vielma Moto-Repuestos.' });
+          btnWa.textContent = original; btnWa.disabled = false; return;
+        } catch (err) {
+          if (err && err.name === 'AbortError') { btnWa.textContent = original; btnWa.disabled = false; return; }
+        }
+      }
+      // Respaldo: descargar y abrir WhatsApp con el mensaje.
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a'); a.href = url; a.download = nombre;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+      window.open('https://wa.me/?text=' +
+        encodeURIComponent('Te comparto el presupuesto de Vielma Moto-Repuestos. (adjuntá el PDF descargado)'), '_blank');
+      alert('Descargamos el PDF y abrimos WhatsApp. Adjuntá el archivo descargado en el chat.');
+    } catch (e) {
+      alert(e.message);
+    } finally {
+      btnWa.textContent = original; btnWa.disabled = false;
+    }
+  });
+})();
+</script>
+{% endblock %}

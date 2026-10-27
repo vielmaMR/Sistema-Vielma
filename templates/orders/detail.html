@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% block title %}Orden #{{ order.number }}{% endblock %}
+{% macro csrf() %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endmacro %}
+{% block content %}
+<div class="detail-head">
+  <div>
+    <h2>Orden #{{ order.number }}
+      <span class="badge {{ order.status_css }}">{{ order.status_label }}</span>
+    </h2>
+    <p class="muted">Creada {{ order.created_at|localdt }} por {{ order.created_by.full_name }}</p>
+  </div>
+  {% if can_edit %}
+  <a class="btn btn-ghost" href="{{ url_for('orders.edit', order_id=order.id) }}">Editar datos</a>
+  {% endif %}
+</div>
+
+<div class="detail-grid">
+  <!-- Columna principal -->
+  <div class="col-main">
+    <section class="card">
+      <h3>Vehículo y cliente</h3>
+      <div class="kv">
+        <div><span>Tipo</span><strong>{{ order.vehicle_label }}</strong></div>
+        <div><span>Marca / Modelo</span><strong>{{ order.brand or '—' }} {{ order.model or '' }}</strong></div>
+        <div><span>Año</span><strong>{{ order.year or '—' }}</strong></div>
+        <div><span>Chapa</span><strong>{{ order.plate or '—' }}</strong></div>
+        <div><span>Kilometraje</span><strong>{{ order.mileage or '—' }}</strong></div>
+        <div><span>Cliente</span><strong>{{ order.client_name or '—' }}</strong></div>
+        <div><span>Teléfono</span><strong>{{ order.client_phone or '—' }}</strong></div>
+        <div><span>Asignado a</span><strong>{{ order.assigned_to.full_name if order.assigned_to else 'Sin asignar' }}</strong></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h3>Trabajo</h3>
+      <div class="kv">
+        <div><span>Tipo</span><strong>{{ order.work_type_label }}</strong></div>
+      </div>
+      <div class="field-block"><span>Problema / solicitud</span><p>{{ order.problem_description or '—' }}</p></div>
+      <div class="field-block"><span>Diagnóstico</span><p>{{ order.diagnosis or '—' }}</p></div>
+      <div class="field-block"><span>Tareas a realizar</span><p>{{ order.tasks_detail or '—' }}</p></div>
+      <div class="field-block"><span>Repuestos</span><p>{{ order.parts_used or '—' }}</p></div>
+      <div class="field-block"><span>Observaciones</span><p>{{ order.observations or '—' }}</p></div>
+    </section>
+
+    <section class="card">
+      <h3>Económico</h3>
+      <div class="kv">
+        <div><span>Presupuesto estimado</span><strong>{{ order.estimated_budget|money }}</strong></div>
+        <div><span>Monto aprobado</span><strong>{{ order.approved_amount|money }}</strong></div>
+        <div><span>Monto cobrado</span><strong>{{ order.final_amount|money }}</strong></div>
+      </div>
+    </section>
+
+    <!-- Historial de estados -->
+    <section class="card">
+      <h3>Historial de estados</h3>
+      <ul class="timeline">
+        {% for h in order.status_history %}
+        <li>
+          <span class="badge {{ C.STATUS_CSS.get(h.to_status,'') }}">{{ C.STATUS_LABELS.get(h.to_status, h.to_status) }}</span>
+          <span class="muted">{{ h.changed_at|localdt }}{% if h.changed_by %} · {{ h.changed_by.full_name }}{% endif %}</span>
+          {% if h.note %}<p class="tl-note">{{ h.note }}</p>{% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+    </section>
+
+    <!-- Notas -->
+    <section class="card">
+      <h3>Observaciones</h3>
+      {% for n in order.notes %}
+        <div class="note"><p>{{ n.body }}</p><span class="muted">{{ n.author.full_name if n.author else '' }} · {{ n.created_at|localdt }}</span></div>
+      {% else %}<p class="muted">Sin observaciones.</p>{% endfor %}
+      <form method="post" action="{{ url_for('orders.add_note', order_id=order.id) }}">
+        {{ csrf() }}
+        {{ note_form.note(class="input", rows=2, placeholder="Agregar observación...") }}
+        <button class="btn btn-sm">Agregar</button>
+      </form>
+    </section>
+  </div>
+
+  <!-- Columna lateral de acciones y tiempos -->
+  <aside class="col-side">
+    <section class="card timing-card">
+      <h3>Tiempos</h3>
+      {% if order.status == C.ST_EN_TRABAJO and active_session %}
+      <div class="timer-big" data-live-since="{{ active_session.started_at.isoformat() }}" data-base="{{ timing.effective_work|int }}">
+        {{ timing.effective_work|dur }}
+      </div>
+      <p class="muted center">Tiempo efectivo (en curso)</p>
+      {% endif %}
+      <div class="kv tight">
+        <div><span>Efectivo de trabajo</span><strong>{{ timing.effective_work|dur }}</strong></div>
+        <div><span>Pausas</span><strong>{{ timing.pause|dur }}</strong></div>
+        <div><span>Espera aprobación</span><strong>{{ timing.waiting_approval|dur }}</strong></div>
+        <div><span>Pendiente de inicio</span><strong>{{ timing.pending_start|dur }}</strong></div>
+        <div><span>Calendario total</span><strong>{{ timing.calendar|dur }}</strong></div>
+      </div>
+      {% if by_user %}
+      <h4>Por empleado</h4>
+      <div class="kv tight">
+        {% for uid, secs in by_user.items() %}
+        <div><span>{{ user_map[uid].full_name if uid in user_map else uid }}</span><strong>{{ secs|dur }}</strong></div>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </section>
+
+    {% include "orders/_actions.html" %}
+  </aside>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/timer.js') }}"></script>
+{% endblock %}

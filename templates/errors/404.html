@@ -1,0 +1,6 @@
+{% extends "base.html" %}
+{% block title %}No encontrado{% endblock %}
+{% block content %}
+<div class="empty"><h2>404 — No encontrado</h2><p>La página u orden solicitada no existe.</p>
+<a class="btn btn-primary" href="{{ url_for('main.index') }}">Volver al inicio</a></div>
+{% endblock %}

@@ -1,0 +1,46 @@
+# Infraestructura como código para Render (plan gratuito con PostgreSQL).
+#
+# Al conectar el repositorio en Render con "Blueprint", este archivo crea:
+#   1. Una base de datos PostgreSQL gestionada (persistente entre despliegues).
+#   2. El servicio web, con DATABASE_URL conectada automáticamente a esa base.
+#
+# Los datos viven en la base PostgreSQL, separada del servicio web, por lo que
+# NO se pierden al redesplegar ni al reiniciar. El código detecta DATABASE_URL
+# y usa PostgreSQL automáticamente (ver config.py).
+
+databases:
+  - name: vielma-db
+    plan: free
+    databaseName: vielma
+    user: vielma
+
+services:
+  - type: web
+    name: sistema-vielma
+    runtime: python
+    plan: free
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120"
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: vielma-db
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true          # Render genera una clave segura automáticamente
+      - key: SESSION_COOKIE_SECURE
+        value: "true"                # Render sirve por HTTPS
+      - key: TIMEZONE
+        value: America/Asuncion
+      - key: SESSION_LIFETIME_DAYS
+        value: "30"
+      # Contraseñas iniciales de los usuarios semilla.
+      # Definilas en el panel de Render (Environment) antes del primer arranque.
+      - key: SEED_PASSWORD_CHRISTIAN
+        sync: false
+      - key: SEED_PASSWORD_HUMBERTO
+        sync: false
+      - key: SEED_PASSWORD_ARTURO
+        sync: false
