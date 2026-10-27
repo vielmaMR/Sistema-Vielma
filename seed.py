@@ -15,11 +15,26 @@ SEED_USERS = [
 
 
 def init_db(app):
-    """Crea tablas si no existen y siembra los usuarios iniciales sin duplicar."""
+    """Crea tablas si no existen y siembra los usuarios iniciales sin duplicar.
+
+    Es idempotente y tolerante a arranques concurrentes (varios workers de
+    gunicorn): si otro proceso ya creó las tablas o los usuarios, este continúa
+    sin fallar.
+    """
+    from sqlalchemy.exc import IntegrityError, OperationalError, ProgrammingError
+
     with app.app_context():
-        db.create_all()
-        _seed_users(app)
-        db.session.commit()
+        try:
+            db.create_all()
+        except (OperationalError, ProgrammingError):
+            # Otro worker pudo estar creando las tablas al mismo tiempo.
+            db.session.rollback()
+        try:
+            _seed_users(app)
+            db.session.commit()
+        except IntegrityError:
+            # Otro worker ya sembró los usuarios (choque de username único).
+            db.session.rollback()
 
 
 def _seed_users(app):
